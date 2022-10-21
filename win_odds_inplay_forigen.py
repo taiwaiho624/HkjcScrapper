@@ -7,6 +7,7 @@ from core import DuplicateChecker
 from utils import postgresClient
 from utils import logger
 from utils import util
+from utils import request
 import time 
 import logging
 import datetime
@@ -14,11 +15,16 @@ import sys
 import requests
 
 class WinOddsForigenUrlGenerator(GenericUrlGenerator.GenericUrlGenerator):
+    def GetUrls(self):
+        session = requests.Session()
+        headers = {'Cookie': 'rmbs=3; aps03=cf=N&cg=2&cst=0&ct=42&hd=N&lng=10&oty=2&tzi=27; session=processform=0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:54.0) Gecko/20100101 Firefox/54.0'}
+        result = session.get("https://www.bet365.com/#/AS/B2/", headers=headers)
+        print(result)
+
     def Generate(self):
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.1 Safari/605.1.15',
-                    'referer': "https://www.oddschecker.com/",
-                    'origin': "https://www.oddschecker.com"}
-        print(requests.get("https://www.oddschecker.com/horse-racing/sha-tin/06:00/winner", headers=headers).content)
+        self.GetUrls()
+
         yield ["https://www.oddschecker.com/horse-racing/sha-tin/06:00/winner", {}]
 
 class WinOddsForigenScrapper(GenericWebScrapper.GenericWebScrapper):

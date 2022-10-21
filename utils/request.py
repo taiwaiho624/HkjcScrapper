@@ -38,6 +38,7 @@ def get_challenge_answer(challenge):
 
 def Request(url):
     s = requests.Session()
+    r = None
     while True:
         try:
             r = s.get(url)
@@ -45,8 +46,6 @@ def Request(url):
         except:
             logging.error("Error when trying to fetch from url, url=", url)
             time.sleep(10)
-            continue
-        
     if 'X-AA-Challenge' in r.text:
         challenge = parse_challenge(r.text)
         while True:
@@ -72,7 +71,5 @@ def Request(url):
             except:
                 logging.error("Connection Refused, url=", url)
                 continue
-
-
-
-
+    else:
+        return r

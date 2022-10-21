@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 
 class HTMLDecoder:
     def __init__(self, html):
-        self.soup = BeautifulSoup( html.content , 'html.parser')
+        self.soup = BeautifulSoup(html.content , 'html.parser')
         self.etree = etree.HTML(html.content)
 
     def GetText(self, xpath):

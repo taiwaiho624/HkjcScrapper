@@ -1,4 +1,4 @@
-
+from numpy import False_
 from utils import postgresClient
 from utils import request
 from utils import util
@@ -6,12 +6,13 @@ import configparser
 import logging
 
 class GenericScrapper:
-    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None):
+    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None, customWrite = False):
         self.tableName = tableName
         self.data = {}
         self.urlGenerator = urlGenerator
         self.postgresClient = postgresClient
         
+        self.customWrite = customWrite
         self.isUpsert = isUpsert
         self.duplicateChecker = duplicateChecker
 
@@ -87,30 +88,34 @@ class GenericScrapper:
         self.init()
         #self.initLastWriteSnapShot()
         for url, dynamicFields in self.urlGenerator.Generate():
-            self.cleanValue()
-            self.setDynamicValues(dynamicFields)
-            self.setStaticValues()
-            
-            self.setRequestTime()
-            context = self.request(url)
-            
-            if not self.isValid(context):
-                self.urlGenerator.NotifyIsValid(False)
-                logging.info("It is not an valid url=" + url)
-                continue 
-            logging.info("Processing url=" + url)
+            try:
+                self.cleanValue()
+                self.setDynamicValues(dynamicFields)
+                self.setStaticValues()
+                
+                self.setRequestTime()
+                context = self.request(url)
+                
+                if not self.isValid(context):
+                    self.urlGenerator.NotifyIsValid(False)
+                    logging.info("It is not an valid url=" + url)
+                    continue 
+                logging.info("Processing url=" + url)
 
-            self.urlGenerator.NotifyIsValid(True)
-            
-            self.setResponseTime()
-            self.decode(context)
-            
-            if self.isDuplicate():
-                logging.info("It is deplicated data, so we dont write to db url=" + url)
+                self.urlGenerator.NotifyIsValid(True)
+                
+                self.setResponseTime()
+                self.decode(context)
+                
+                if self.isDuplicate():
+                    logging.info("It is deplicated data, so we dont write to db url=" + url)
+                    continue
+                
+                if self.customWrite == False:
+                    self.writeToDb()
+                self.saveLastWriteSnapShot()
+
+            except Exception as error:
+                logging.exception(error)
                 continue
-            
-            self.writeToDb()
-            self.saveLastWriteSnapShot()
-            
-
     

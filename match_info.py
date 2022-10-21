@@ -35,6 +35,7 @@ class MatchinfoScrapper(GenericWebScrapper.GenericWebScrapper):
             return False
         
         venue = context.GetText(self.webData["venue"]['xpath'])
+        
         if venue == "Sha Tin":
             self.data["match_id"]["value"] = self.data["match_id"]["value"] + "ST"
         elif venue == "Happy Valley":

@@ -43,7 +43,7 @@ class PostGresClient:
     def Execute(self, command):
         try:
             self.conn.cursor().execute(command)
-            logging.info("Executed Command = " + command)
+            #logging.info("Executed Command = " + command)
         except Exception as e:
             logging.error("Not able to execute command = " + command + " error=" + str(e))
             
