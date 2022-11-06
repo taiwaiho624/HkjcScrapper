@@ -46,7 +46,9 @@ class JackpotScrapper(GenericXmlScrapper.GenericXmlScrapper):
                 self.data["qtt_jackpot"]["value"] = jackpot
                 match_id = util.ConstructMatchId(self.data["match_id"]["value"], raceNo, venue)
                 self.data["match_id"]["value"] = match_id
-                break
+                self.writeToDb()
+                self.cleanValue()
+                self.data["match_id"]["value"] = util.GetTodayDate()
 
 if __name__ == "__main__":
     try: 
@@ -61,7 +63,8 @@ if __name__ == "__main__":
             tableName, 
             JackpotUrlGenerator(), 
             postgresClient,
-            True
+            True,
+            customWrite = True
         )
 
         scapper.Start()
