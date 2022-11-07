@@ -3,31 +3,67 @@ from shutil import ExecError
 from unittest import result
 from core import GenericWebScrapper
 from core import GenericUrlGenerator
+from core import GenericSeleniumScrapper
 from core import DuplicateChecker
 from utils import postgresClient
 from utils import logger
 from utils import util
 from utils import request
+from utils import selenium_request
 import time 
 import logging
 import datetime
 import sys 
 import requests
 
+venues = {
+    "sha-tin" : "ST",
+    "happy-valley" : "HV",
+    "Morioka" : "MK"
+} 
+
+dealer_name = {
+    "SK" : {
+        "name"  : "Sky Sports",
+        "index" : 2
+    },
+    "B3" : {
+        "name"  : "Bet365",
+        "index" : 1
+    },
+}
+
+
 class WinOddsForigenUrlGenerator(GenericUrlGenerator.GenericUrlGenerator):
     def GetUrls(self):
-        session = requests.Session()
-        headers = {'Cookie': 'rmbs=3; aps03=cf=N&cg=2&cst=0&ct=42&hd=N&lng=10&oty=2&tzi=27; session=processform=0',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:54.0) Gecko/20100101 Firefox/54.0'}
-        result = session.get("https://www.bet365.com/#/AS/B2/", headers=headers)
-        print(result)
+        self.urls = []
+        self.venue = ""
+        r = selenium_request.Request("https://www.oddschecker.com/horse-racing")
+        for matchDiv in r.find_all("div", {"class" : "race-details"}):
+            venue = matchDiv.find_all("a")[0].text
+            if venue in venues:
+                self.venue = venues[venue] 
+                for matchUrl in matchDiv.find_all("div", {"class" : "all-todays-races"})[0].find_all("a"):
+                    self.urls.append("https://www.oddschecker.com" + matchUrl["href"])
+                    
+                break
 
     def Generate(self):
         self.GetUrls()
 
-        yield ["https://www.oddschecker.com/horse-racing/sha-tin/06:00/winner", {}]
+        race_day = util.GetTodayDate()
 
-class WinOddsForigenScrapper(GenericWebScrapper.GenericWebScrapper):
+        while True:
+            for i, url in enumerate(self.urls):
+                dynamicFields = {
+                    "match_id" : util.ConstructMatchId(race_day, i + 1, self.venue)
+                }
+
+                yield [url, dynamicFields]
+
+            time.sleep(10)
+
+class WinOddsForigenScrapper(GenericSeleniumScrapper.GenericSeleniumScrapper):
     def isValid(self, context):
         return True
 
@@ -36,7 +72,14 @@ class WinOddsForigenScrapper(GenericWebScrapper.GenericWebScrapper):
         self.data["data_source"]['value'] = "oddsChecker"
         
     def decode(self, context):
-        print(context.GetAlt(self.webData["dealer_1_name"]["value"]))
+        for row in context.find_all("tbody", {"id" : "t1"})[0].find_all("tr", {"class" : "diff-row"}):
+            horse_number = row.find_all("td", {"class" : "cardnum"})[0].text
+            
+            for odd in row.find_all("td"):
+                if odd.get("data-bk") in dealer_name and odd.text != "":
+                    dealer_index = dealer_name[odd["data-bk"]]["index"]
+                    self.data["dealer_{}_name".format(dealer_index)]["value"] = dealer_name[odd["data-bk"]]["name"]
+                    self.data["dealer_{}_horse_{}_odds".format(dealer_index, horse_number)]["value"] = odd["data-odig"]
 
 if __name__ == "__main__":
     try:

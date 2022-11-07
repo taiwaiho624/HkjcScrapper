@@ -1,13 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-
 from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup as bs
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.add_argument('--no-sandbox') 
-driver = webdriver.Chrome(executable_path='/usr/lib/chromium-browser/chromedriver', options=chrome_options)
+def Request(url):
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless') 
+    options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.get(url)
 
-driver.get("https://www.google.com")
-print(driver.page_source.encode('utf-8'))
+    soup = bs(driver.page_source, "html.parser")
+
+    return soup
