@@ -1,4 +1,5 @@
-from asyncio import Handle
+from curses.ascii import isdigit
+from shutil import ExecError
 from unittest import result
 from core import GenericWebScrapper
 from core import GenericUrlGenerator
@@ -12,89 +13,88 @@ import datetime
 import sys 
 
 class ResultAndDividendUrlGenerator(GenericUrlGenerator.GenericUrlGenerator):
-    def __init__(self, fromDate):
-        self.fromDate = fromDate 
+    def __init__(self, date):
         super().__init__()
+        self.fromDate = date 
         
     def Generate(self):
         venues = ["ST", "HV"]
         for date in util.DateGenerator(self.fromDate):
             for venue in venues:
-                for raceNo in range(1,12):
+                for race_no in range(1,12):
                     if self.isValid == False:
                         self.isValid = True
                         break
-
-                    dateNewFormat = datetime.datetime.strptime(date, "%Y/%m/%d")
-                    match_id =  dateNewFormat.strftime("%Y%m%d") + str(raceNo).zfill(2) + venue
-
-                    url = "https://racing.hkjc.com/racing/information/english/Racing/LocalResults.aspx?RaceDate=" + date + "&Racecourse=" + venue + "&RaceNo=" + str(raceNo)
-                                    
+                    
+                    url = "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx?RaceDate=" + date + "&Racecourse=" + venue + "&RaceNo=" + str(race_no)
                     dynamicFields = {
-                        "match_id" : match_id,
-                        'url' : url
+                        "match_id" : util.ConstructMatchId(date, race_no, venue),
+                        "url" : url
                     }
                     
                     yield [url, dynamicFields]     
 
 
 class ResultAndDividendScrapper(GenericWebScrapper.GenericWebScrapper):
+    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert=False, duplicateChecker=None, customWrite=False, onlyRunOnRaceDay=True):
+        super().__init__(tableName, urlGenerator, postgresClient, isUpsert, duplicateChecker, customWrite, onlyRunOnRaceDay)
+    
+    def writeDhToFile(self):
+        file = open("data/result_and_dividend_same_rank_list.txt", "a")
+        file.write(self.data["url"]["value"] + "\n")
+
     def isValid(self, context):
-        value = context.GetText(self.webData["horse_1_number"]['xpath'])
+        value = context.GetText(self.webData["rank_1_horse_number"]['xpath'])
         if value == None:
             return False 
         return True
 
-    def HandleSixUp(self, context, rowNo, rawPath):
-        try:
-            tmp = context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo + 1), "1")).replace(",", "|")
-        except:
-            tmp = "JOCKEY"
-   
-        if "JOCKEY" not in tmp:
-            self.data["sixup_combination_1"]["value"] = context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo + 1), "1")).replace(",", "|")
-            self.data["sixup_dividend_1"]["value"] = float(context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo + 1), "2")).replace(",",""))
-
-            self.data["sixup_combination_2"]["value"] = context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo), "2")).replace(",", "|")
-            self.data["sixup_dividend_2"]["value"] = float(context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo), "3")).replace(",", ""))
-        else: 
-            self.data["sixup_combination_2"]["value"] = context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo), "2")).replace(",", "|")
-            self.data["sixup_dividend_2"]["value"] = float(context.GetText("{}/tr[{}]/td[{}]".format(rawPath, str(rowNo), "3")).replace(",", ""))
-    
     def decode(self, context):
-        rawPath = self.webData["dividend_table"]["xpath"]
-        tbodys = context.Get(self.webData["dividend_table"]["xpath"])
-        for tbody in tbodys:
-            rowNo= 0
-            for row in tbody.xpath("./tr"):
-                rowNo = rowNo + 1
-                pool = row.xpath("./td")[0]
-                heading = pool.text.replace(" ", "").replace("\r\n", "")
-                if heading == "SIXUP":
-                    self.HandleSixUp(context, rowNo, rawPath)                    
-                    
-    
+        isSameRankUrl = False
+        for key in self.webData.keys():
+            value = context.GetText(self.webData[key]["xpath"])
+            if "left" in key:
+                if value != None and "DH" in value:
+                    isSameRankUrl = True
+            else:
+                if value != None:
+                    value = value.replace("\r\n", "").replace(" ", "")
+                    self.data[key]["value"] = value
+        if isSameRankUrl:
+            self.writeDhToFile()
+
     def setStaticValues(self):
         self.data["data_source"]['value'] = "hkjc"
-        
+
+
 
 if __name__ == "__main__":
     try: 
         tableName = "result_and_dividend"
-
         logger.Init(tableName)
                 
         postgresClient = postgresClient.PostGresClient()
         postgresClient.connect()
 
+        date = None
+
+        onlyRunOnRaceDay = False
+
+        if len(sys.argv) == 1:
+            onlyRunOnRaceDay = True 
+            date = util.GetTodayDate()
+        else:
+            date = sys.argv[1]
+
+
         scapper = ResultAndDividendScrapper(
             tableName, 
-            ResultAndDividendUrlGenerator(sys.argv[1]), 
+            ResultAndDividendUrlGenerator(date), 
             postgresClient,
-            True
+            onlyRunOnRaceDay=onlyRunOnRaceDay
         )
 
         scapper.Start()
         
     except Exception as error:
-        logging.error(error)
+        logging.exception(error) 

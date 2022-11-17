@@ -13,31 +13,33 @@ import datetime
 import sys 
 
 class WinOddsUrlGenerator(GenericUrlGenerator.GenericUrlGenerator):
-    def __init__(self):
+    def __init__(self, date):
         super().__init__()
+        self.fromDate = date 
         
     def Generate(self):
         venues = ["ST", "HV"]
-
-        race_day = util.GetTodayDate()
-
-        for venue in venues:
-            for race_no in range(1,12):
-                if self.isValid == False:
-                    self.isValid = True
-                    break
-                
-                dynamicFields = {
-                    "match_id" : util.ConstructMatchId(race_day, race_no, venue),
-                }
-                
-                yield ["https://racing.hkjc.com/racing/information/Chinese/Racing/LocalResults.aspx?RaceDate=" + race_day + "&Racecourse=" + venue + "&RaceNo=" + str(race_no), dynamicFields]     
+        for date in util.DateGenerator(self.fromDate):
+            for venue in venues:
+                for race_no in range(1,12):
+                    if self.isValid == False:
+                        self.isValid = True
+                        break
+                    
+                    dynamicFields = {
+                        "match_id" : util.ConstructMatchId(date, race_no, venue),
+                    }
+                    
+                    yield ["https://racing.hkjc.com/racing/information/Chinese/Racing/LocalResults.aspx?RaceDate=" + date + "&Racecourse=" + venue + "&RaceNo=" + str(race_no), dynamicFields]     
 
 
 class WinOddsScrapper(GenericWebScrapper.GenericWebScrapper):
+    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert=False, duplicateChecker=None, customWrite=False, onlyRunOnRaceDay=True):
+        super().__init__(tableName, urlGenerator, postgresClient, isUpsert, duplicateChecker, customWrite, onlyRunOnRaceDay)
+
     def isValid(self, context):
         value = context.GetText(self.webData["horse_1_number"]['xpath'])
-        if value == None or value == '-':
+        if value == None:
             return False 
         return True
 
@@ -80,17 +82,28 @@ class WinOddsScrapper(GenericWebScrapper.GenericWebScrapper):
 
 if __name__ == "__main__":
     try: 
-        print("hi")
         tableName = "win_odds_history"
         logger.Init(tableName)
                 
         postgresClient = postgresClient.PostGresClient()
         postgresClient.connect()
 
+        date = None
+
+        onlyRunOnRaceDay = False
+
+        if len(sys.argv) == 1:
+            onlyRunOnRaceDay = True 
+            date = util.GetTodayDate()
+        else:
+            date = sys.argv[1]
+
+
         scapper = WinOddsScrapper(
             tableName, 
-            WinOddsUrlGenerator(), 
-            postgresClient
+            WinOddsUrlGenerator(date), 
+            postgresClient,
+            onlyRunOnRaceDay=onlyRunOnRaceDay
         )
 
         scapper.Start()

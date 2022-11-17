@@ -1,6 +1,6 @@
 import datetime 
-
-
+import logging 
+from . import request 
 
 def MinusDayFromMatchId(matchId, day):
     date = matchId[0:8]
@@ -35,6 +35,11 @@ def GetYesterdayDate():
 def DateGenerator(fromDate):
     start = datetime.datetime.strptime(fromDate, "%Y/%m/%d")
     end = datetime.datetime.today()
+
+    if (start.date() == end.date()):
+        yield end.strftime("%Y/%m/%d")
+        return
+   
     date_generated = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
 
     for date in date_generated:
@@ -43,7 +48,22 @@ def DateGenerator(fromDate):
 def RaceNoGenerator():
     for i in range(1,11):
         yield i
-        
+
+def IsRaceDay():
+    venues = ["HV", "ST"]
+    race_day = GetTodayDate()
+    
+    
+    for venue in venues:
+        url = f'https://bet.hkjc.com/racing/getJSON.aspx?type=win&date={race_day}&venue={venue}&raceno=1'
+        res = request.Request(url).json()
+        if "OUT" in res and len(res["OUT"]) > 0:
+            logging.info("Today is a race day")
+            return True
+
+    logging.info("Today is not a race day. We stop the program")
+    return False 
+
 def ParseNumber(text):
     """
         Return the first number in the given text for any locale.

@@ -43,7 +43,10 @@ class XmlScrapper(GenericXmlScrapper.GenericXmlScrapper):
                 i = 1
                 for oddsInfo in info.findall(".//OddsInfo"):
                     self.data["combination_" + str(i) + "_combo"]["value"] = oddsInfo.get("Number")
-                    self.data["combination_" + str(i) + "_odds"]["value"] = oddsInfo.get("Odds")
+                    
+                    if oddsInfo.get("Odds").isnumeric():
+                        self.data["combination_" + str(i) + "_odds"]["value"] = oddsInfo.get("Odds")
+                        
                     #self.data["combination_" + str(i) + "_willpay"]["value"] = oddsInfo.get("WillPay")
                     self.data["match_id"]["value"] = util.ConstructMatchId(util.GetTodayDate(), matchNo, self.venue)
                     i = i + 1

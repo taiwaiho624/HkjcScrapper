@@ -6,12 +6,12 @@ import configparser
 import logging
 
 class GenericScrapper:
-    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None, customWrite = False):
+    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None, customWrite = False, onlyRunOnRaceDay=True):
         self.tableName = tableName
         self.data = {}
         self.urlGenerator = urlGenerator
         self.postgresClient = postgresClient
-        
+        self.onlyRunOnRaceDay = onlyRunOnRaceDay
         self.customWrite = customWrite
         self.isUpsert = isUpsert
         self.duplicateChecker = duplicateChecker
@@ -86,7 +86,9 @@ class GenericScrapper:
 
     def Start(self):
         self.init()
-        #self.initLastWriteSnapShot()
+        if self.onlyRunOnRaceDay == True and not util.IsRaceDay():
+            print(self.onlyRunOnRaceDay)
+            return False
         for url, dynamicFields in self.urlGenerator.Generate():
             try:
                 self.cleanValue()

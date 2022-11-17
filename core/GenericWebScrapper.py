@@ -5,8 +5,8 @@ import configparser
 
 
 class GenericWebScrapper(GenericScrapper):
-    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None):
-        super().__init__(tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None)
+    def __init__(self, tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None, customWrite = False, onlyRunOnRaceDay=True):
+        super().__init__(tableName, urlGenerator, postgresClient, isUpsert = False, duplicateChecker = None, customWrite = False, onlyRunOnRaceDay=onlyRunOnRaceDay)
         self.webData = {}
     
     def request(self, url):
