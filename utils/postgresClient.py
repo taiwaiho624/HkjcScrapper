@@ -4,10 +4,12 @@ from configparser import ConfigParser
 import logging
 from optparse import Values
 import psycopg2
+from datetime import datetime
 
 class PostGresClient:
     def __init__(self):
         self.conn = None
+        self.tablename = None
     
     def config(self, filename="env/database.ini", section="postgressql"):
         # create a parser
@@ -40,14 +42,19 @@ class PostGresClient:
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(error)
 
+    def Notify(self):
+        now = datetime.now().strftime("%m/%d %H:%M:%S")
+        self.conn.cursor().execute(f"NOTIFY table_update, '{self.tablename},{now}';")
+
     def Execute(self, command):
         try:
             self.conn.cursor().execute(command)
-            #logging.info("Executed Command = " + command)
+            self.Notify()
         except Exception as e:
             logging.error("Not able to execute command = " + command + " error=" + str(e))
             
     def CreateTableIfNotExist(self, tablename, data):
+        self.tablename = tablename
         context = ""
         for key in data.keys():
             context += key + " " + data[key]["type"] + ","

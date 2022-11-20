@@ -51,15 +51,30 @@ class ResultAndDividendScrapper(GenericWebScrapper.GenericWebScrapper):
 
     def decode(self, context):
         isSameRankUrl = False
+        dhMap = {}
+        i = 1
+        j = 1
         for key in self.webData.keys():
             value = context.GetText(self.webData[key]["xpath"])
             if "left" in key:
                 if value != None and "DH" in value:
                     isSameRankUrl = True
+                    dhMap[i] = str(value[:-2]).replace(" ", "")
+                else:
+                    dhMap[i] = str(i) 
+                i += 1
             else:
                 if value != None:
                     value = value.replace("\r\n", "").replace(" ", "")
-                    self.data[key]["value"] = value
+                    
+                    #not same rank
+                    if dhMap[j] == str(j):
+                        self.data[key]["value"] = value
+                    #if same rank
+                    else: 
+                        self.data[f'rank_{dhMap[j]}_horse_number']["value"] += f"/{value}"
+                j += 1
+
         if isSameRankUrl:
             self.writeDhToFile()
 
