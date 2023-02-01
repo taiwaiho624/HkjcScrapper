@@ -32,6 +32,19 @@ def GetYesterdayDate():
     yesterday = datetime.datetime.now() - datetime.timedelta(1)
     return yesterday.strftime("%Y/%m/%d")
 
+def DateGeneratorNoSlash(fromDate):
+    start = datetime.datetime.strptime(fromDate, "%Y/%m/%d")
+    end = datetime.datetime.today()
+
+    if (start.date() == end.date()):
+        yield end.strftime("%Y%m%d")
+        return
+   
+    date_generated = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
+
+    for date in date_generated:
+        yield date.strftime("%Y%m%d")
+
 def DateGenerator(fromDate):
     start = datetime.datetime.strptime(fromDate, "%Y/%m/%d")
     end = datetime.datetime.today()

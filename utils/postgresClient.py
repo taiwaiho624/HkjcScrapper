@@ -10,6 +10,7 @@ class PostGresClient:
     def __init__(self):
         self.conn = None
         self.tablename = None
+        self.cursor = None
     
     def config(self, filename="env/database.ini", section="postgressql"):
         # create a parser
@@ -38,18 +39,17 @@ class PostGresClient:
             logging.info('Connecting to the PostgreSQL database...')
             self.conn = psycopg2.connect(**params)
             self.conn.autocommit = True
-                    
+            self.cursor = self.conn.cursor()
         except (Exception, psycopg2.DatabaseError) as error:
             logging.error(error)
 
     def Notify(self):
         now = datetime.now().strftime("%m/%d %H:%M:%S")
-        self.conn.cursor().execute(f"NOTIFY table_update, '{self.tablename},{now}';")
+        self.cursor.execute(f"NOTIFY table_update, '{self.tablename},{now}';")
 
     def Execute(self, command):
         try:
-            self.conn.cursor().execute(command)
-            self.Notify()
+            self.cursor.execute(command)
         except Exception as e:
             logging.error("Not able to execute command = " + command + " error=" + str(e))
             
@@ -79,7 +79,8 @@ class PostGresClient:
             
         command = "INSERT INTO {} ({}) VALUES ({})".format(tableName, keys[:-1], values[:-1])
         self.Execute(command)
-    
+        self.Notify()
+
     def Upsert(self, tableName, data, primary_key="match_id"):
         values = ""
         keys   = "" 
@@ -99,7 +100,7 @@ class PostGresClient:
     
         command = "INSERT INTO {} ({}) VALUES ({}) ON CONFLICT ({}) DO UPDATE SET {}".format(tableName, keys[:-1], values[:-1], primary_key, update[:-2])
         self.Execute(command)
-
+        self.Notify()
         
     
     def SelectInitSnapshot(self, tableName, group_key, keys, dayWithin = 5):
@@ -110,5 +111,29 @@ class PostGresClient:
         rows = self.conn.cursor().fetchall()
         print(rows)
         return 
+    
+    def ReturnValue(self, cursor):
+        colName = [desc[0] for desc in cursor.description]
+        while 1:
+            data = cursor.fetchone()
+            if not data:
+                break
+
+            result = {}
+            
+            for i in range(len(data)):
+                result[colName[i]] = data[i]
+
+            yield result
+
+    def SelectFromTable(self, tableName):
+        cursor = self.conn.cursor()
+        cursor.execute(f"SELECT * FROM {tableName};")
+        return self.ReturnValue(cursor) 
         
+    def ExecuteCommand(self, command):
+        cursor = self.conn.cursor()
+        cursor.execute(command)
+        return self.ReturnValue(cursor)        
+
         

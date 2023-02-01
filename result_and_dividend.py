@@ -32,7 +32,8 @@ class ResultAndDividendUrlGenerator(GenericUrlGenerator.GenericUrlGenerator):
                         "url" : url
                     }
                     
-                    yield [url, dynamicFields]     
+                    yield [url, dynamicFields]
+                 
 
 
 class ResultAndDividendScrapper(GenericWebScrapper.GenericWebScrapper):
@@ -61,7 +62,7 @@ class ResultAndDividendScrapper(GenericWebScrapper.GenericWebScrapper):
                     isSameRankUrl = True
                     dhMap[i] = str(value[:-2]).replace(" ", "")
                 else:
-                    dhMap[i] = str(i) 
+                    dhMap[i] = str(i)
                 i += 1
             else:
                 if value != None:
@@ -72,7 +73,14 @@ class ResultAndDividendScrapper(GenericWebScrapper.GenericWebScrapper):
                         self.data[key]["value"] = value
                     #if same rank
                     else: 
-                        self.data[f'rank_{dhMap[j]}_horse_number']["value"] += f"/{value}"
+                        key = dhMap[j].replace(u'\xa0', u' ').replace(" ","")
+                        if self.data[f'rank_{key}_horse_number']["value"] == "N/A":
+                           self.data[f'rank_{key}_horse_number']["value"] = ""
+                        
+                        if len(self.data[f'rank_{key}_horse_number']["value"]) == 0:
+                            self.data[f'rank_{key}_horse_number']["value"] += f"{value}"
+                        else:
+                            self.data[f'rank_{key}_horse_number']["value"] += f"/{value}"
                 j += 1
 
         if isSameRankUrl:
